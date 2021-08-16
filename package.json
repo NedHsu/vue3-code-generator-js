@@ -44,5 +44,8 @@
 		"mocha": "^8.4.0",
 		"typescript": "^4.3.2",
 		"vscode-test": "^1.5.2"
+	},
+	"dependencies": {
+		"preserve-case-replace": "^1.0.2"
 	}
 }

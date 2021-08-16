@@ -1,7 +1,7 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
+const { copyFileSync, readdirSync, readdir, statSync, copyFile, existsSync, mkdirSync } = require('fs');
 const vscode = require('vscode');
-
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 
@@ -23,39 +23,16 @@ function activate(context) {
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Hello World from vue3-code-generator-js!');
 	});
-	
-	let newModule = vscode.commands.registerCommand('vue3-code-generator-js.newModule', function() {
-		let quickPick = vscode.window.createQuickPick();
-		quickPick.items = [{
-			label: "label",
-			description: "description",
-			detail: "detail"
-		}];
 
-		let input = vscode.window.createInputBox();
-		input.placeholder = "name of module";
+	let newModule = initNewModule(context);
 
-		// process
-		input.show();
-		input.onDidAccept(() => {
-			console.log(input.value);
-			input.hide();
-			quickPick.show();
-		});
-
-		quickPick.onDidChangeSelection((e) => {
-			console.log(e[0].label);
-			quickPick.hide();
-		});
-	});
-
-	let test = vscode.commands.registerCommand('vue3-code-generator-js.test', function() {
-		console.log(context.workspaceState.keys());
+	let test = vscode.commands.registerCommand('vue3-code-generator-js.test', function () {
 		console.log(context.globalStorageUri);
 		console.log(context.storageUri);
 		console.log(context.extensionUri);
 		console.log(context.workspaceState.keys());
 		console.log(vscode.workspace.workspaceFolders);
+		console.log(context.extension.extensionUri.fsPath);
 	});
 
 	context.subscriptions.push(disposable);
@@ -63,8 +40,90 @@ function activate(context) {
 	context.subscriptions.push(test);
 }
 
+function initNewModule(context) {
+	return vscode.commands.registerCommand('vue3-code-generator-js.newModule', function () {
+
+		let config = {
+			templateName: '',
+			destName: '',
+			destPath: '',
+		};
+		let {
+			templateName, destName, destPath,
+		} = config;
+
+		let quickPick = vscode.window.createQuickPick();
+		quickPick.items = [{
+			label: 'module',
+			description: 'description',
+			detail: 'detail'
+		}];
+
+		let destPathInput = vscode.window.createInputBox();
+		destPathInput.placeholder = 'dest path';
+
+		let destNameInput = vscode.window.createInputBox();
+		destPathInput.placeholder = 'name';
+
+		// process
+		quickPick.show();
+		quickPick.onDidChangeSelection((e) => {
+			templateName = e[0].label;
+			console.log(templateName);
+			destNameInput.show();
+			quickPick.hide();
+		});
+
+		destNameInput.onDidAccept(() => {
+			destName = destNameInput.value;
+			console.log(destName);
+			// check name
+			destPathInput.show();
+		});
+
+		destPathInput.onDidAccept(() => {
+			destPath = destPathInput.value;
+			let copyFrom = `${context.extension.extensionUri.fsPath}\\templates\\${templateName}`;
+			console.log(copyFrom);
+			if (vscode.workspace.workspaceFolders.length == 0) {
+				vscode.window.showErrorMessage('Workspace Folder is not found!');
+				return;
+			}
+			console.log(walkDir(copyFrom));
+			let files = readdirSync(copyFrom);
+			console.log(files);
+			let destDir = `${vscode.workspace.workspaceFolders[0].uri.fsPath}${destPath ? `\\${destPath}` : ''}`;
+			if (!existsSync(destDir)) {
+				mkdirSync(destDir);
+			}
+			copyFile(`${copyFrom}\\file`, `${destDir}\\file`, (info) => {
+				console.log(info);
+			});
+			destPathInput.hide();
+		});
+	});
+}
+
 // this method is called when your extension is deactivated
-function deactivate() {}
+function deactivate() { }
+
+// recursive directory search
+function walkDir(root) {
+	const stat = statSync(root);
+
+	if (stat.isDirectory()) {
+		const dirs = readdirSync(root).filter(item => !item.startsWith('.'));
+		let results = dirs.map(sub => walkDir(`${root}/${sub}`));
+		// empty dir
+		if (results.length == 0) {
+			results.push(root);
+		}
+		return [].concat(...results);
+	} else {
+		console.log(root);
+		return root;
+	}
+}
 
 module.exports = {
 	activate,
